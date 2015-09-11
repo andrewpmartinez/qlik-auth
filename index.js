@@ -1,3 +1,5 @@
+'use strict';
+
 var url = require('url');
 var fs = require('fs');
 var http = require('http');
@@ -7,21 +9,20 @@ var util = require('util');
 
 module.exports = {
 
-    init: function (req, res) {
+    init: function (req /*, res*/) {
 
         //Store targetId and proxyRestUri in a global object
-        if (url.parse(req.url, true).query.targetId != undefined) {
+        if (url.parse(req.url, true).query.targetId !== undefined) {
             global.qlikAuthSession = {
-                "targetId": url.parse(req.url, true).query.targetId,
-                "proxyRestUri": url.parse(req.url, true).query.proxyRestUri
+                'targetId': url.parse(req.url, true).query.targetId,
+                'proxyRestUri': url.parse(req.url, true).query.proxyRestUri
             };
         }
     },
 
     requestTicket: function (req, res, profile, options) {
+        options = options || {};
 
-        if (!options)
-            var options = {};
 
         //Get and verify parameters
         options.Certificate = options.Certificate || './client.pfx';
@@ -38,9 +39,10 @@ module.exports = {
             res.end('Missing parameters');
             return;
         }
+        var cert = null;
 
         try {
-            var cert = fs.readFileSync(options.Certificate);
+            cert = fs.readFileSync(options.Certificate);
         } catch (e) {
             res.end('Missing client certificate');
             return;
@@ -66,8 +68,10 @@ module.exports = {
                 //Parse ticket response
                 var ticket = JSON.parse(d.toString());
 
+                var redirectURI = '';
+
                 //Build redirect including ticket
-                if (ticket.TargetUri.indexOf("?") > 0) {
+                if (ticket.TargetUri.indexOf('?') > 0) {
                     redirectURI = ticket.TargetUri + '&QlikTicket=' + ticket.Ticket;
                 } else {
                     redirectURI = ticket.TargetUri + '?QlikTicket=' + ticket.Ticket;
@@ -101,22 +105,20 @@ module.exports = {
         var rnd = crypto.randomBytes(size), value = new Array(size), len = chars.length;
 
         for (var i = 0; i < size; i++) {
-            value[i] = chars[rnd[i] % len]
-        };
+            value[i] = chars[rnd[i] % len];
+        }
 
         return value.join('');
     },
 
     requestWebTicket: function (req, res, profile, options) {
-
-        if (!options)
-            var options = {};
+        options = options || {};
 
         //Get parameters
         options.Host = options.Host || 'http://localhost';
-        options.TryUrl = options.TryUrl || '/QlikView'
+        options.TryUrl = options.TryUrl || '/QlikView';
         options.BackUrl = options.BackUrl || '';
-        var tryUrl = options.Document ? '/QvAjaxZfc/opendoc.htm?document=' + options.Document : options.TryUrl
+        var tryUrl = options.Document ? '/QvAjaxZfc/opendoc.htm?document=' + options.Document : options.TryUrl;
 
         var settings = {
             host: url.parse(options.Host).hostname,
@@ -131,7 +133,7 @@ module.exports = {
             groups = '<GroupList>';
             for (var i = profile.Groups.length - 1; i >= 0; i--) {
                 groups += '<string>' + profile.Groups[i] + '</string>';
-            };
+            }
             groups += '</GroupList><GroupsIsNames>true</GroupsIsNames>';
         }
 
@@ -144,8 +146,8 @@ module.exports = {
             ticketres.on('data', function (d) {
                 try {
                     var ticket = d.toString().match('<_retval_>(.*)</_retval_>')[1];
-                    if (ticket.length == 40) {
-                        var redirectURI = util.format('%s/QvAJAXZfc/Authenticate.aspx?type=html&webticket=%s&try=%s&back=%s', options.Host, ticket, tryUrl, options.BackUrl)
+                    if (ticket.length === 40) {
+                        var redirectURI = util.format('%s/QvAJAXZfc/Authenticate.aspx?type=html&webticket=%s&try=%s&back=%s', options.Host, ticket, tryUrl, options.BackUrl);
                         res.writeHead(302, {'Location': redirectURI});
                         res.end();
                     }
@@ -155,7 +157,7 @@ module.exports = {
                     }
                 }
                 catch (e) {
-                    res.write("Error retrieving webticket");
+                    res.write('Error retrieving webticket');
                     res.end();
                 }
             });
